@@ -1,9 +1,48 @@
 package org.example;
 
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
+import java.awt.image.BufferedImage;
+import javax.imageio.ImageIO;
+import javax.swing.plaf.ButtonUI;
+import java.io.*;
 import java.sql.*;
 import java.util.Calendar;
+
+public class Main {
+    private final static String URL = "jdbc:mysql://localhost:3306/mydbtest";
+    private final static String USERNAME = "root";
+    private final static String PASSWORD = "root";
+
+    public static void main (String[]args){
+        try (Connection conn = DriverManager.getConnection(URL, USERNAME, PASSWORD);Statement stat = conn.createStatement();) {
+            if (!conn.isClosed()) System.out.println("We are connected!");
+
+            BufferedImage image = ImageIO.read(new File("logo.png"));
+            Blob blob = conn.createBlob();
+            try (OutputStream outputStream = blob.setBinaryStream(1);){
+                ImageIO.write(image, "png", outputStream);
+            }
+
+//            PreparedStatement statement = conn.prepareStatement("insert into dish (id, icon) value (?,?)");
+//            statement.setInt(1,23);
+//            statement.setBlob(2,blob);
+//            statement.execute();
+
+            ResultSet resultSet = stat.executeQuery("select * from dish");
+            while (resultSet.next()){
+                Blob blob2 = resultSet.getBlob("icon");
+                BufferedImage image2 = ImageIO.read(blob.getBinaryStream());
+                File outputFile = new File("saved.png");
+                ImageIO.write(image2,"png", outputFile);
+            }
+
+        } catch (SQLException e) {
+            System.out.println("Нет коннекта!");
+            throw new RuntimeException(e);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+}
 
 //public class Main {
 //    private final static String URL = "jdbc:mysql://localhost:3306/mydbtest";
