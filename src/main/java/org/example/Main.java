@@ -13,15 +13,16 @@ public class Main {
     private final static String PASSWORD = "root";
 
     public static void main (String[]args){
-        try (Connection conn = DriverManager.getConnection(URL, USERNAME, PASSWORD);Statement stat = conn.createStatement();) {
+        try (Connection conn = DriverManager.getConnection(URL, USERNAME, PASSWORD);Statement stat = conn.createStatement()) {
             if (!conn.isClosed()) System.out.println("We are connected!");
 
             BufferedImage image = ImageIO.read(new File("logo.png"));
             Blob blob = conn.createBlob();
-            try (OutputStream outputStream = blob.setBinaryStream(1);){
+            try (OutputStream outputStream = blob.setBinaryStream(1)){
                 ImageIO.write(image, "png", outputStream);
             }
 
+            // Добавление картинки в БД.
 //            PreparedStatement statement = conn.prepareStatement("insert into dish (id, icon) value (?,?)");
 //            statement.setInt(1,23);
 //            statement.setBlob(2,blob);
@@ -30,7 +31,7 @@ public class Main {
             ResultSet resultSet = stat.executeQuery("select * from dish");
             while (resultSet.next()){
                 Blob blob2 = resultSet.getBlob("icon");
-                BufferedImage image2 = ImageIO.read(blob.getBinaryStream());
+                BufferedImage image2 = ImageIO.read(blob2.getBinaryStream());
                 File outputFile = new File("saved.png");
                 ImageIO.write(image2,"png", outputFile);
             }
