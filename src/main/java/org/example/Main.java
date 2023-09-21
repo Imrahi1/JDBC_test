@@ -14,33 +14,30 @@ public class Main {
 
     public static void main(String[] args) {
         try (Connection conn = DriverManager.getConnection(URL, USERNAME, PASSWORD);
-             Statement statement = conn.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY)) {
-                                                        //Где INSENSITIVE - без изменений в бд
-                                                        //    CONCUR_READ_ONLY - режим чтения
+             Statement statement = conn.createStatement(ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE);
+                                                        //Где SENSITIVE - c изменениями в бд
+                                                        //    CONCUR_UPDATABLE - режим записи
+//             PreparedStatement preparedStatement = conn.prepareStatement("sql", ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE)
+        ) {
+            ResultSet resultSet = statement.executeQuery("select * from dish");
+            while (resultSet.next()){
+                System.out.println(resultSet.getInt("id"));
+                System.out.println(resultSet.getString("title"));
+            }
+            resultSet.last();
+            resultSet.updateString("title", "new Value");
+            resultSet.updateRow();
 
-            ResultSet resultSet = statement.executeQuery("select * from dish"); // Здесь stat получает scrollable resultSet.
-            if (resultSet.next()){ // Перейти к следующдей записи
-                System.out.println(resultSet.getString("title"));
-            }
-            if (resultSet.next()){
-                System.out.println(resultSet.getString("title"));
-            }
-            if (resultSet.previous()){ // Перейти к предыдущей записи
-                System.out.println(resultSet.getString("title"));
-            }
-            if (resultSet.relative(2)){ // Перейти вперед на 2 шага
-                System.out.println(resultSet.getString("title"));
-            }
-            if (resultSet.relative(-2)){ // Перейти назад на 2 шага
-                System.out.println(resultSet.getString("title"));
-            }
-            if (resultSet.absolute(2)){ // Перейти на 2-ую запись
-                System.out.println(resultSet.getString("title"));
-            }
-            if (resultSet.first()){ // Перейти на 1-ую запись
-                System.out.println(resultSet.getString("title"));
-            }
-            if (resultSet.last()){// Перейти на последнюю запись
+            resultSet.moveToInsertRow(); // Перейти к созданию нового поля
+            resultSet.updateString("title", "inserted row");
+            resultSet.insertRow();
+
+            resultSet.absolute(2);
+            resultSet.deleteRow();
+
+            resultSet.beforeFirst(); // Перейти выше первого поля (нужно для валидного вывода с циклом .next())
+            while (resultSet.next()){
+                System.out.println(resultSet.getInt("id"));
                 System.out.println(resultSet.getString("title"));
             }
 
@@ -49,6 +46,51 @@ public class Main {
         }
     }
 }
+
+//public class Main {
+//    private final static String URL = "jdbc:mysql://localhost:3306/mydbtest";
+//    private final static String USERNAME = "root";
+//    private final static String PASSWORD = "root";
+//
+//    public static void main(String[] args) {
+//        try (Connection conn = DriverManager.getConnection(URL, USERNAME, PASSWORD);
+//             Statement statement = conn.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
+//                                                        //Где INSENSITIVE - без изменений в бд
+//                                                        //    CONCUR_READ_ONLY - режим чтения
+////             PreparedStatement preparedStatement = conn.prepareStatement("sql", ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE)
+//        ) {
+//
+//            ResultSet resultSet = statement.executeQuery("select * from dish"); // Здесь stat получает scrollable resultSet.
+//            if (resultSet.next()){ // Перейти к следующдей записи
+//                System.out.println(resultSet.getString("title"));
+//            }
+//            if (resultSet.next()){
+//                System.out.println(resultSet.getString("title"));
+//            }
+//            if (resultSet.previous()){ // Перейти к предыдущей записи
+//                System.out.println(resultSet.getString("title"));
+//            }
+//            if (resultSet.relative(2)){ // Перейти вперед на 2 шага
+//                System.out.println(resultSet.getString("title"));
+//            }
+//            if (resultSet.relative(-2)){ // Перейти назад на 2 шага
+//                System.out.println(resultSet.getString("title"));
+//            }
+//            if (resultSet.absolute(2)){ // Перейти на 2-ую запись
+//                System.out.println(resultSet.getString("title"));
+//            }
+//            if (resultSet.first()){ // Перейти на 1-ую запись
+//                System.out.println(resultSet.getString("title"));
+//            }
+//            if (resultSet.last()){// Перейти на последнюю запись
+//                System.out.println(resultSet.getString("title"));
+//            }
+//
+//        } catch (SQLException e) {
+//            throw new RuntimeException(e);
+//        }
+//    }
+//}
 //public class Main {
 //    private final static String URL = "jdbc:mysql://localhost:3306/mydbtest";
 //    private final static String USERNAME = "root";
