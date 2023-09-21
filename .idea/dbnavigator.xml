@@ -31,11 +31,7 @@
   </component>
   <component name="DBNavigator.Project.DatabaseConsoleManager">
     <connection id="91df6aca-a77e-4c3c-9288-6650b4df0a08">
-      <console name="Connection" type="STANDARD" schema="mydbtest" session="Main"><![CDATA[insert into users (name, age, email) values('Nastya',25,'nastya@mail.ru');
---select * from users where name = 'Steve';
---update users set name='Steve', age = 55 where id = 3;
---delete from users where id = 4;
-select * from users;]]></console>
+      <console name="Connection" type="STANDARD" schema="mydbtest" session="Main" />
     </connection>
   </component>
   <component name="DBNavigator.Project.DatabaseEditorStateManager">
