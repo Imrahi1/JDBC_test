@@ -2,6 +2,9 @@ package org.example;
 
 import java.awt.image.BufferedImage;
 import javax.imageio.ImageIO;
+import javax.sql.rowset.CachedRowSet;
+import javax.sql.rowset.RowSetFactory;
+import javax.sql.rowset.RowSetProvider;
 import javax.swing.plaf.ButtonUI;
 import java.io.*;
 import java.sql.*;
@@ -12,34 +15,65 @@ public class Main {
     private final static String USERNAME = "root";
     private final static String PASSWORD = "root";
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws SQLException {
+        ResultSet resultSet = getData();
+        while (resultSet.next()){
+            System.out.println(resultSet.getInt("id"));
+            System.out.println(resultSet.getString("title"));
+        }
+
+//        CachedRowSet cachedRowSet = (CachedRowSet) resultSet; // Превращаем resultSet в CachedRowSet
+
+//        Получить данные
+//        cachedRowSet.setUrl(URL);
+//        cachedRowSet.setUsername(USERNAME);
+//        cachedRowSet.setPassword(PASSWORD);
+
+//        cachedRowSet.setCommand("select * from dish where id = ?"); // Передать запрос к выборке
+//        cachedRowSet.setInt(1,23); // передать в переменную ? под номером 1 значение.
+//        cachedRowSet.setPageSize(20); // если записей много, могу их ограничить
+//        cachedRowSet.execute();
+//        do {
+//            while (cachedRowSet.next()){
+//                System.out.println(cachedRowSet.getInt("id"));
+//                System.out.println(cachedRowSet.getString("title"));
+//            }
+//        } while (cachedRowSet.nextPage());
+
+//      Изменить данные
+        CachedRowSet cachedRowSet2 = (CachedRowSet) resultSet;
+        cachedRowSet2.setTableName("dish");
+        cachedRowSet2.absolute(1);
+        cachedRowSet2.deleteRow();
+        cachedRowSet2.beforeFirst();
+        while (cachedRowSet2.next()){
+            System.out.println(cachedRowSet2.getInt("id"));
+            System.out.println(cachedRowSet2.getString("title"));
+        }
+
+        //Применение изменений
+        //1 способ
+//        cachedRowSet2.acceptChanges(DriverManager.getConnection(URL,USERNAME,PASSWORD));
+
+        //2 способ
+        cachedRowSet2.setUrl(URL);
+        cachedRowSet2.setUsername(USERNAME);
+        cachedRowSet2.setPassword(PASSWORD);
+        cachedRowSet2.acceptChanges(); // Не работает :(
+    }
+
+
+    private static ResultSet getData(){
         try (Connection conn = DriverManager.getConnection(URL, USERNAME, PASSWORD);
-             Statement statement = conn.createStatement(ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE);
-                                                        //Где SENSITIVE - c изменениями в бд
-                                                        //    CONCUR_UPDATABLE - режим записи
-//             PreparedStatement preparedStatement = conn.prepareStatement("sql", ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE)
-        ) {
+             Statement statement = conn.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);) {
+
+            RowSetFactory factory = RowSetProvider.newFactory(); // создатель RowSet-ов
+            CachedRowSet cachedRowSet = factory.createCachedRowSet(); // создаем кешированный RowSet, хотя есть и другие (гугл)
+
+
             ResultSet resultSet = statement.executeQuery("select * from dish");
-            while (resultSet.next()){
-                System.out.println(resultSet.getInt("id"));
-                System.out.println(resultSet.getString("title"));
-            }
-            resultSet.last();
-            resultSet.updateString("title", "new Value");
-            resultSet.updateRow();
-
-            resultSet.moveToInsertRow(); // Перейти к созданию нового поля
-            resultSet.updateString("title", "inserted row");
-            resultSet.insertRow();
-
-            resultSet.absolute(2);
-            resultSet.deleteRow();
-
-            resultSet.beforeFirst(); // Перейти выше первого поля (нужно для валидного вывода с циклом .next())
-            while (resultSet.next()){
-                System.out.println(resultSet.getInt("id"));
-                System.out.println(resultSet.getString("title"));
-            }
+            cachedRowSet.populate(resultSet); // Передаем в кешированный RowSet обычный. (Кешируем RowSet)
+            return cachedRowSet;
 
         } catch (SQLException e) {
             throw new RuntimeException(e);
@@ -47,6 +81,55 @@ public class Main {
     }
 }
 
+
+
+
+
+
+
+
+//Бежим по ResultSet и обновляем
+//public class Main {
+//    private final static String URL = "jdbc:mysql://localhost:3306/mydbtest";
+//    private final static String USERNAME = "root";
+//    private final static String PASSWORD = "root";
+//
+//    public static void main(String[] args) {
+//        try (Connection conn = DriverManager.getConnection(URL, USERNAME, PASSWORD);
+//             Statement statement = conn.createStatement(ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE);
+//                                                        //Где SENSITIVE - c изменениями в бд
+//                                                        //    CONCUR_UPDATABLE - режим записи
+////             PreparedStatement preparedStatement = conn.prepareStatement("sql", ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE)
+//        ) {
+//            ResultSet resultSet = statement.executeQuery("select * from dish");
+//            while (resultSet.next()){
+//                System.out.println(resultSet.getInt("id"));
+//                System.out.println(resultSet.getString("title"));
+//            }
+//            resultSet.last();
+//            resultSet.updateString("title", "new Value");
+//            resultSet.updateRow();
+//
+//            resultSet.moveToInsertRow(); // Перейти к созданию нового поля
+//            resultSet.updateString("title", "inserted row");
+//            resultSet.insertRow();
+//
+//            resultSet.absolute(2);
+//            resultSet.deleteRow();
+//
+//            resultSet.beforeFirst(); // Перейти выше первого поля (нужно для валидного вывода с циклом .next())
+//            while (resultSet.next()){
+//                System.out.println(resultSet.getInt("id"));
+//                System.out.println(resultSet.getString("title"));
+//            }
+//
+//        } catch (SQLException e) {
+//            throw new RuntimeException(e);
+//        }
+//    }
+//}
+
+//Бежим по ResultSet и читаем
 //public class Main {
 //    private final static String URL = "jdbc:mysql://localhost:3306/mydbtest";
 //    private final static String USERNAME = "root";
@@ -91,19 +174,22 @@ public class Main {
 //        }
 //    }
 //}
+
+//Загрузка картинки в код и в БД
 //public class Main {
 //    private final static String URL = "jdbc:mysql://localhost:3306/mydbtest";
 //    private final static String USERNAME = "root";
 //    private final static String PASSWORD = "root";
 //
 //    public static void main (String[]args){
-//        try (Connection conn = DriverManager.getConnection(URL, USERNAME, PASSWORD);Statement stat = conn.createStatement()) {
+//        try (Connection conn = DriverManager.getConnection(URL, USERNAME, PASSWORD);
+//             Statement stat = conn.createStatement()) {
 //            if (!conn.isClosed()) System.out.println("We are connected!");
 //
-//            BufferedImage image = ImageIO.read(new File("logo.png"));
-//            Blob blob = conn.createBlob();
-//            try (OutputStream outputStream = blob.setBinaryStream(1)){
-//                ImageIO.write(image, "png", outputStream);
+//            BufferedImage image = ImageIO.read(new File("logo.png")); // Закидываем картинку в переменную
+//            Blob blob = conn.createBlob(); // Создаем пустую переменную типа Blob
+//            try (OutputStream outputStream = blob.setBinaryStream(1)){ // Создаем поток который будет грузить картинку в Blob переменную
+//                ImageIO.write(image, "png", outputStream); // Активируем загрузку
 //            }
 //
 //            // Добавление картинки в БД.
@@ -129,12 +215,13 @@ public class Main {
 //    }
 //}
 
+//Установка данных
 //public class Main {
 //    private final static String URL = "jdbc:mysql://localhost:3306/mydbtest";
 //    private final static String USERNAME = "root";
 //    private final static String PASSWORD = "root";
 //
-//    private static final String INSERT_NEW = "INSERT INTO dish VALUES(?,?,?,?,?,?,?)";
+//    private static final String INSERT_NEW = "INSERT INTO dish VALUES(?,?,?,?,?,?,?)"; // ? - переменные по индексам
 //    private static final String GET_ALL = "SELECT * FROM dish";
 //
 //    private static final String DELETE = "DELETE FROM dish WHERE id=?";
@@ -147,26 +234,24 @@ public class Main {
 //            if (!connection.isClosed()) System.out.println("We are connected!");
 //
 ////            preparedStatement = connection.prepareStatement(INSERT_NEW);
-////            preparedStatement.setInt(1,2);
+////            preparedStatement.setInt(1,2); // установка значений в переменные из INSERT_NEW, где 1-ый агр это индекс переменной
 ////            preparedStatement.setString(2,"Inserted title");
 ////            preparedStatement.setString(3, "Inserted desc");
 ////            preparedStatement.setFloat(4, 0.2f);
 ////            preparedStatement.setBoolean(5,true);
 ////            preparedStatement.setDate(6,new Date(Calendar.getInstance().getTimeInMillis()));
 ////            preparedStatement.setBlob(7, new FileInputStream("logo.png"));
-////
-////            preparedStatement.execute();
+////            preparedStatement.execute(); // Применить установку данных
 //
 //            preparedStatement = connection.prepareStatement(DELETE);
-//
-//            preparedStatement.setInt(1,2);
-//            preparedStatement.executeUpdate();
+//            preparedStatement.setInt(1,2); // Установить в переменную из DELETE значение
+//            preparedStatement.executeUpdate(); // Применить обновление данных
 //
 //            preparedStatement = connection.prepareStatement(GET_ALL);
+//            ResultSet res = preparedStatement.executeQuery(); // Применить запрос данных
 //
-//            ResultSet res = preparedStatement.executeQuery();
-//
-//            while (res.next()){
+//            Вывод данных
+//            while (res.next()){ // бежим по строкам бд
 //                int id = res.getInt("id");
 //                String title = res.getString("title");
 //                String desc = res.getString("description");
@@ -177,7 +262,6 @@ public class Main {
 //
 //                System.out.println("id: "+id+", title: "+title+", description: "+desc+", rating: "+rating+"" +
 //                        ", published: "+published+", date: "+date+", icon lenght: "+icon.length);
-//
 //            }
 //
 //        } catch (SQLException e) {
@@ -196,7 +280,6 @@ public class Main {
 
 
 //Урок 6 "ResultSet получение данных"
-
 //public class Main {
 //    public static void main(String[] args) {
 //        DBWorker worker = new DBWorker();
@@ -205,9 +288,9 @@ public class Main {
 //
 //        try {
 //            Statement statement = worker.getConnection().createStatement();
-//            ResultSet resultSet = statement.executeQuery(query);
+//            ResultSet resultSet = statement.executeQuery(query); // Применяем запрос данных
 //
-//            while (resultSet.next()){
+//            while (resultSet.next()){ // бежим по строкам бд
 //                User user = new User();
 ////                user.setId(resultSet.getInt(1));                              // Используя порядковые номера колонок начиная с 1
 ////                user.setUsername(resultSet.getString(2));
@@ -236,7 +319,8 @@ public class Main {
 //
 //    public static void main(String[] args) {
 //        //try с ресурсами в скобках которые не надо закрывать вручную.
-//        try (Connection connection = DriverManager.getConnection(URL, USERNAME, PASSWORD); Statement statement = connection.createStatement()) {
+//        try (Connection connection = DriverManager.getConnection(URL, USERNAME, PASSWORD);
+//             Statement statement = connection.createStatement()) {
 //            if (!connection.isClosed()) System.out.println("We are connected!");
 //
 //            //statement.execute("INSERT INTO users(name,age,email) VALUES ('Artem',24,'artem@mail.ru');");    // Сделать запись в бд
@@ -253,7 +337,7 @@ public class Main {
 ////
 ////            statement.clearBatch();                                                                         // Очистить запросы
 //
-//            System.out.println(statement.getConnection());
+//            System.out.println(statement.getConnection()); //Просто по приколу
 //        } catch (SQLException e) {
 //            System.out.println("there is no connection... Exception!");
 //        }
