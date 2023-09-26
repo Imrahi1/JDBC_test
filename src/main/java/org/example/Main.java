@@ -15,71 +15,104 @@ public class Main {
     private final static String USERNAME = "root";
     private final static String PASSWORD = "root";
 
-    public static void main(String[] args) throws SQLException {
-        ResultSet resultSet = getData();
-        while (resultSet.next()){
-            System.out.println(resultSet.getInt("id"));
-            System.out.println(resultSet.getString("title"));
-        }
-
-//        CachedRowSet cachedRowSet = (CachedRowSet) resultSet; // Превращаем resultSet в CachedRowSet
-
-//        Получить данные
-//        cachedRowSet.setUrl(URL);
-//        cachedRowSet.setUsername(USERNAME);
-//        cachedRowSet.setPassword(PASSWORD);
-
-//        cachedRowSet.setCommand("select * from dish where id = ?"); // Передать запрос к выборке
-//        cachedRowSet.setInt(1,23); // передать в переменную ? под номером 1 значение.
-//        cachedRowSet.setPageSize(20); // если записей много, могу их ограничить
-//        cachedRowSet.execute();
-//        do {
-//            while (cachedRowSet.next()){
-//                System.out.println(cachedRowSet.getInt("id"));
-//                System.out.println(cachedRowSet.getString("title"));
-//            }
-//        } while (cachedRowSet.nextPage());
-
-//      Изменить данные
-        CachedRowSet cachedRowSet2 = (CachedRowSet) resultSet;
-        cachedRowSet2.setTableName("dish");
-        cachedRowSet2.absolute(1);
-        cachedRowSet2.deleteRow();
-        cachedRowSet2.beforeFirst();
-        while (cachedRowSet2.next()){
-            System.out.println(cachedRowSet2.getInt("id"));
-            System.out.println(cachedRowSet2.getString("title"));
-        }
-
-        //Применение изменений
-        //1 способ
-//        cachedRowSet2.acceptChanges(DriverManager.getConnection(URL,USERNAME,PASSWORD));
-
-        //2 способ
-        cachedRowSet2.setUrl(URL);
-        cachedRowSet2.setUsername(USERNAME);
-        cachedRowSet2.setPassword(PASSWORD);
-        cachedRowSet2.acceptChanges(); // Не работает :(
-    }
-
-
-    private static ResultSet getData(){
+    public static void main(String[] args) {
         try (Connection conn = DriverManager.getConnection(URL, USERNAME, PASSWORD);
-             Statement statement = conn.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);) {
+             Statement stat = conn.createStatement()) {
+            if (!conn.isClosed()) System.out.println("We are connected!");
 
-            RowSetFactory factory = RowSetProvider.newFactory(); // создатель RowSet-ов
-            CachedRowSet cachedRowSet = factory.createCachedRowSet(); // создаем кешированный RowSet, хотя есть и другие (гугл)
+            // Взять метаданные из бд
+            DatabaseMetaData databaseMetaData = conn.getMetaData();
+            ResultSet tables = databaseMetaData.getTables(null, null, null, new String[]{"Table"});
+            while (tables.next()){
+                System.out.println(tables.getString(3));
+            }
+            System.out.println("==================================");
 
-
+            // Взять метаданные из выборки
+            Statement statement = conn.createStatement();
             ResultSet resultSet = statement.executeQuery("select * from dish");
-            cachedRowSet.populate(resultSet); // Передаем в кешированный RowSet обычный. (Кешируем RowSet)
-            return cachedRowSet;
+            ResultSetMetaData metaData = resultSet.getMetaData();
+            for (int i = 1; i <= metaData.getColumnCount(); i++) {
+                System.out.println(metaData.getColumnLabel(i));
+                System.out.println(metaData.getColumnType(i));
+            }
 
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
     }
 }
+
+//public class Main {
+//    private final static String URL = "jdbc:mysql://localhost:3306/mydbtest";
+//    private final static String USERNAME = "root";
+//    private final static String PASSWORD = "root";
+//
+//    public static void main(String[] args) throws SQLException {
+//        ResultSet resultSet = getData();
+//        while (resultSet.next()){
+//            System.out.println(resultSet.getInt("id"));
+//            System.out.println(resultSet.getString("title"));
+//        }
+//
+////        CachedRowSet cachedRowSet = (CachedRowSet) resultSet; // Превращаем resultSet в CachedRowSet
+//
+////        Получить данные
+////        cachedRowSet.setUrl(URL);
+////        cachedRowSet.setUsername(USERNAME);
+////        cachedRowSet.setPassword(PASSWORD);
+//
+////        cachedRowSet.setCommand("select * from dish where id = ?"); // Передать запрос к выборке
+////        cachedRowSet.setInt(1,23); // передать в переменную ? под номером 1 значение.
+////        cachedRowSet.setPageSize(20); // если записей много, могу их ограничить
+////        cachedRowSet.execute();
+////        do {
+////            while (cachedRowSet.next()){
+////                System.out.println(cachedRowSet.getInt("id"));
+////                System.out.println(cachedRowSet.getString("title"));
+////            }
+////        } while (cachedRowSet.nextPage());
+//
+////      Изменить данные
+//        CachedRowSet cachedRowSet2 = (CachedRowSet) resultSet;
+//        cachedRowSet2.setTableName("dish");
+//        cachedRowSet2.absolute(1);
+//        cachedRowSet2.deleteRow();
+//        cachedRowSet2.beforeFirst();
+//        while (cachedRowSet2.next()){
+//            System.out.println(cachedRowSet2.getInt("id"));
+//            System.out.println(cachedRowSet2.getString("title"));
+//        }
+//
+//        //Применение изменений
+//        //1 способ
+////        cachedRowSet2.acceptChanges(DriverManager.getConnection(URL,USERNAME,PASSWORD));
+//
+//        //2 способ
+//        cachedRowSet2.setUrl(URL);
+//        cachedRowSet2.setUsername(USERNAME);
+//        cachedRowSet2.setPassword(PASSWORD);
+//        cachedRowSet2.acceptChanges(); // Не работает :(
+//    }
+//
+//
+//    private static ResultSet getData(){
+//        try (Connection conn = DriverManager.getConnection(URL, USERNAME, PASSWORD);
+//             Statement statement = conn.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);) {
+//
+//            RowSetFactory factory = RowSetProvider.newFactory(); // создатель RowSet-ов
+//            CachedRowSet cachedRowSet = factory.createCachedRowSet(); // создаем кешированный RowSet, хотя есть и другие (гугл)
+//
+//
+//            ResultSet resultSet = statement.executeQuery("select * from dish");
+//            cachedRowSet.populate(resultSet); // Передаем в кешированный RowSet обычный. (Кешируем RowSet)
+//            return cachedRowSet;
+//
+//        } catch (SQLException e) {
+//            throw new RuntimeException(e);
+//        }
+//    }
+//}
 
 
 
