@@ -17,7 +17,7 @@ public class Main {
 
     public static void main(String[] args) {
         try (Connection conn = DriverManager.getConnection(URL, USERNAME, PASSWORD);
-             Statement stat = conn.createStatement()) {
+             Statement statement = conn.createStatement()) {
             if (!conn.isClosed()) System.out.println("We are connected!");
 
             // Взять метаданные из бд
@@ -29,7 +29,6 @@ public class Main {
             System.out.println("==================================");
 
             // Взять метаданные из выборки
-            Statement statement = conn.createStatement();
             ResultSet resultSet = statement.executeQuery("select * from dish");
             ResultSetMetaData metaData = resultSet.getMetaData();
             for (int i = 1; i <= metaData.getColumnCount(); i++) {
