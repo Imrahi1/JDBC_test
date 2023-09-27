@@ -17,30 +17,65 @@ public class Main {
 
     public static void main(String[] args) {
         try (Connection conn = DriverManager.getConnection(URL, USERNAME, PASSWORD);
-             Statement statement = conn.createStatement()) {
+             Statement stat = conn.createStatement()) {
             if (!conn.isClosed()) System.out.println("We are connected!");
 
-            // Взять метаданные из бд
-            DatabaseMetaData databaseMetaData = conn.getMetaData();
-            ResultSet tables = databaseMetaData.getTables(null, null, null, new String[]{"Table"});
-            while (tables.next()){
-                System.out.println(tables.getString(3));
-            }
-            System.out.println("==================================");
+            conn.setAutoCommit(false); // Включить ожидание commit
 
-            // Взять метаданные из выборки
-            ResultSet resultSet = statement.executeQuery("select * from dish");
-            ResultSetMetaData metaData = resultSet.getMetaData();
-            for (int i = 1; i <= metaData.getColumnCount(); i++) {
-                System.out.println(metaData.getColumnLabel(i));
-                System.out.println(metaData.getColumnType(i));
-            }
+            stat.executeUpdate("insert into dish (title) values ('transInfo1')");
+            Savepoint savepoint = conn.setSavepoint(); // Установка сейва для rollback, т.е. все что ниже откатывается.
+            stat.executeUpdate("insert into dish (title) values ('transInfo2')");
+            stat.executeUpdate("insert into dish (title) values ('transInfo3')");
+
+
+            conn.rollback(savepoint); // сделать откат, можно к сейвпоинту если его указать в аргументах.
+            conn.commit(); // сделать commit
+
+            //conn.releaseSavepoint(savepoint); // не понятно)
+
+            // Зачастую rollback используют в catch, а внизу тела try ставят commit.
+            // Таким образом код закоммитится только если не было ошибок, если же ошибки были, то изменения rollback-ются.
 
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
     }
 }
+
+
+
+//Мета-данные
+//public class Main {
+//    private final static String URL = "jdbc:mysql://localhost:3306/mydbtest";
+//    private final static String USERNAME = "root";
+//    private final static String PASSWORD = "root";
+//
+//    public static void main(String[] args) {
+//        try (Connection conn = DriverManager.getConnection(URL, USERNAME, PASSWORD);
+//             Statement statement = conn.createStatement()) {
+//            if (!conn.isClosed()) System.out.println("We are connected!");
+//
+//            // Взять метаданные из бд
+//            DatabaseMetaData databaseMetaData = conn.getMetaData();
+//            ResultSet tables = databaseMetaData.getTables(null, null, null, new String[]{"Table"});
+//            while (tables.next()){
+//                System.out.println(tables.getString(3));
+//            }
+//            System.out.println("==================================");
+//
+//            // Взять метаданные из выборки
+//            ResultSet resultSet = statement.executeQuery("select * from dish");
+//            ResultSetMetaData metaData = resultSet.getMetaData();
+//            for (int i = 1; i <= metaData.getColumnCount(); i++) {
+//                System.out.println(metaData.getColumnLabel(i));
+//                System.out.println(metaData.getColumnType(i));
+//            }
+//
+//        } catch (SQLException e) {
+//            throw new RuntimeException(e);
+//        }
+//    }
+//}
 
 //public class Main {
 //    private final static String URL = "jdbc:mysql://localhost:3306/mydbtest";
