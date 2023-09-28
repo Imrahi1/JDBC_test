@@ -15,32 +15,86 @@ public class Main {
     private final static String USERNAME = "root";
     private final static String PASSWORD = "root";
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws SQLException, InterruptedException {
         try (Connection conn = DriverManager.getConnection(URL, USERNAME, PASSWORD);
              Statement stat = conn.createStatement()) {
             if (!conn.isClosed()) System.out.println("We are connected!");
 
             conn.setAutoCommit(false); // Включить ожидание commit
 
-            stat.executeUpdate("insert into dish (title) values ('transInfo1')");
-            Savepoint savepoint = conn.setSavepoint(); // Установка сейва для rollback, т.е. все что ниже откатывается.
-            stat.executeUpdate("insert into dish (title) values ('transInfo2')");
-            stat.executeUpdate("insert into dish (title) values ('transInfo3')");
+            // Dirty Read - чтение несуществующей инфы.
+            conn.setTransactionIsolation(Connection.TRANSACTION_READ_UNCOMMITTED); // Установка уровня изоляции, который не защищает от DirtyRead
+
+            stat.execute("update dish set title = 'new value' where id = 23"); // Меняем данные
+            new OtherTransaction().start(); // Выполняем запрос и вывод данных, который выводит нам измененные данные
+            Thread.sleep(2000);
+            conn.rollback(); // Откатываем конекшн тем самым откатывая обновления на 28 строке
+
+            // В итоге получается что мы вывели данные в бд, которых в бд на самом деле нет.
+            // Решение: уровень TRANSACTION_READ_COMMITTED
+
+        }
+    }
 
 
-            conn.rollback(savepoint); // сделать откат, можно к сейвпоинту если его указать в аргументах.
-            conn.commit(); // сделать commit
+    static class OtherTransaction extends Thread {
+        @Override
+        public void run() {
+            try (Connection conn = DriverManager.getConnection(URL, USERNAME, PASSWORD);
+                 Statement stat = conn.createStatement()) {
+                if (!conn.isClosed()) System.out.println("We are connected2!");
 
-            //conn.releaseSavepoint(savepoint); // не понятно)
+                conn.setAutoCommit(false); // Включить ожидание commit
+                conn.setTransactionIsolation(Connection.TRANSACTION_READ_UNCOMMITTED);
 
-            // Зачастую rollback используют в catch, а внизу тела try ставят commit.
-            // Таким образом код закоммитится только если не было ошибок, если же ошибки были, то изменения rollback-ются.
-
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
+                ResultSet resultSet = stat.executeQuery("select * from dish");
+                while (resultSet.next()) {
+                    System.out.println(resultSet.getInt("id"));
+                    System.out.println(resultSet.getString("title"));
+                }
+                conn.rollback();
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 }
+
+
+
+//Транзакции
+//public class Main {
+//
+//    private final static String URL = "jdbc:mysql://localhost:3306/mydbtest";
+//    private final static String USERNAME = "root";
+//    private final static String PASSWORD = "root";
+//
+//    public static void main(String[] args) {
+//        try (Connection conn = DriverManager.getConnection(URL, USERNAME, PASSWORD);
+//             Statement stat = conn.createStatement()) {
+//            if (!conn.isClosed()) System.out.println("We are connected!");
+//
+//            conn.setAutoCommit(false); // Включить ожидание commit
+//
+//            stat.executeUpdate("insert into dish (title) values ('transInfo1')");
+//            Savepoint savepoint = conn.setSavepoint(); // Установка сейва для rollback, т.е. все что ниже откатывается.
+//            stat.executeUpdate("insert into dish (title) values ('transInfo2')");
+//            stat.executeUpdate("insert into dish (title) values ('transInfo3')");
+//
+//
+//            conn.rollback(savepoint); // сделать откат, можно к сейвпоинту если его указать в аргументах.
+//            conn.commit(); // сделать commit
+//
+//            //conn.releaseSavepoint(savepoint); // не понятно)
+//
+//            // Зачастую rollback используют в catch, а внизу тела try ставят commit.
+//            // Таким образом код закоммитится только если не было ошибок, если же ошибки были, то изменения rollback-ются.
+//
+//        } catch (SQLException e) {
+//            throw new RuntimeException(e);
+//        }
+//    }
+//}
 
 
 
@@ -400,7 +454,7 @@ public class Main {
 ////            statement.addBatch("insert into users (name, age, email) values('Name2',25,'name2@mail.ru');");
 ////            statement.addBatch("insert into users (name, age, email) values('Name3',25,'name3@mail.ru');");
 ////
-////            statement.executeBatch();                                                                       // Выполнить нескольно запросов
+////            statement.executeBatch();                                                                       // Выполнить нескольно запросов, возвращает int массив с инфой о запросах.
 ////
 ////            statement.clearBatch();                                                                         // Очистить запросы
 //
