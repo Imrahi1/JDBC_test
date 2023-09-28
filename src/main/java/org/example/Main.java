@@ -10,6 +10,7 @@ import java.io.*;
 import java.sql.*;
 import java.util.Calendar;
 
+
 public class Main {
     private final static String URL = "jdbc:mysql://localhost:3306/mydbtest";
     private final static String USERNAME = "root";
@@ -22,20 +23,26 @@ public class Main {
 
             conn.setAutoCommit(false); // Включить ожидание commit
 
-            // Dirty Read - чтение несуществующей инфы.
-            conn.setTransactionIsolation(Connection.TRANSACTION_READ_UNCOMMITTED); // Установка уровня изоляции, который не защищает от DirtyRead
+            // Phantom Reads - добаление данных вне основной транзакции.
+//            conn.setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED); // Установка уровня изоляции, который не защищает от PhantomReads
+            conn.setTransactionIsolation(Connection.TRANSACTION_SERIALIZABLE); // Установка уровня изоляции, который защищает от PhantomReads
 
-            stat.execute("update dish set title = 'new value' where id = 23"); // Меняем данные
-            new OtherTransaction().start(); // Выполняем запрос и вывод данных, который выводит нам измененные данные
+            ResultSet resultSet = stat.executeQuery("select * from dish"); // Выполняем запрос и вывод данных, который выводит нам не измененные данные
+            while (resultSet.next()) {
+                System.out.println(resultSet.getInt("id"));
+                System.out.println(resultSet.getString("title"));
+            }
+
+            new OtherTransaction().start(); // Добавляем данные во втором (коннешнене) потоке
             Thread.sleep(2000);
-            conn.rollback(); // Откатываем конекшн тем самым откатывая обновления на 28 строке
 
-            // В итоге получается что мы вывели данные в бд, которых в бд на самом деле нет.
-            // Решение: уровень TRANSACTION_READ_COMMITTED
-
+            ResultSet resultSet2 = stat.executeQuery("select * from dish"); // Выполняем запрос и вывод данных, который выводит нам измененные данные
+            while (resultSet2.next()) {
+                System.out.println(resultSet2.getInt("id"));
+                System.out.println(resultSet2.getString("title"));
+            }
         }
     }
-
 
     static class OtherTransaction extends Thread {
         @Override
@@ -45,20 +52,117 @@ public class Main {
                 if (!conn.isClosed()) System.out.println("We are connected2!");
 
                 conn.setAutoCommit(false); // Включить ожидание commit
-                conn.setTransactionIsolation(Connection.TRANSACTION_READ_UNCOMMITTED);
-
-                ResultSet resultSet = stat.executeQuery("select * from dish");
-                while (resultSet.next()) {
-                    System.out.println(resultSet.getInt("id"));
-                    System.out.println(resultSet.getString("title"));
-                }
-                conn.rollback();
+                conn.setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
+                stat.executeUpdate("insert into dish (title) values ('new value2')");
+                conn.commit();
             } catch (SQLException e) {
                 throw new RuntimeException(e);
             }
         }
     }
 }
+
+//public class Main {
+//    private final static String URL = "jdbc:mysql://localhost:3306/mydbtest";
+//    private final static String USERNAME = "root";
+//    private final static String PASSWORD = "root";
+//
+//    public static void main(String[] args) throws SQLException, InterruptedException {
+//        try (Connection conn = DriverManager.getConnection(URL, USERNAME, PASSWORD);
+//             Statement stat = conn.createStatement()) {
+//            if (!conn.isClosed()) System.out.println("We are connected!");
+//
+//            conn.setAutoCommit(false); // Включить ожидание commit
+//
+//            // Non-Repeatable Reads - изменение данных вне основной транзакции.
+//            conn.setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ); // Установка уровня изоляции, который защищает от REPEATABLE_READ
+////            conn.setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED); // Установка уровня изоляции, который не защищает от REPEATABLE_READ
+//
+//            ResultSet resultSet = stat.executeQuery("select * from dish"); // Выполняем запрос и вывод данных, который выводит нам не измененные данные
+//            while (resultSet.next()) {
+//                System.out.println(resultSet.getInt("id"));
+//                System.out.println(resultSet.getString("title"));
+//            }
+//
+//            new OtherTransaction().start(); // Меняем данные во втором (коннешнене) потоке
+//            Thread.sleep(2000);
+//
+//            ResultSet resultSet2 = stat.executeQuery("select * from dish"); // Выполняем запрос и вывод данных, который выводит нам измененные данные
+//            while (resultSet2.next()) {
+//                System.out.println(resultSet2.getInt("id"));
+//                System.out.println(resultSet2.getString("title"));
+//            }
+//        }
+//    }
+//
+//    static class OtherTransaction extends Thread {
+//        @Override
+//        public void run() {
+//            try (Connection conn = DriverManager.getConnection(URL, USERNAME, PASSWORD);
+//                 Statement stat = conn.createStatement()) {
+//                if (!conn.isClosed()) System.out.println("We are connected2!");
+//
+//                conn.setAutoCommit(false); // Включить ожидание commit
+//                conn.setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
+//                stat.executeUpdate("update dish set title = 'new value' where id = 23");
+//                conn.commit();
+//            } catch (SQLException e) {
+//                throw new RuntimeException(e);
+//            }
+//        }
+//    }
+//}
+
+// DirtyRead
+//public class Main {
+//    private final static String URL = "jdbc:mysql://localhost:3306/mydbtest";
+//    private final static String USERNAME = "root";
+//    private final static String PASSWORD = "root";
+//
+//    public static void main(String[] args) throws SQLException, InterruptedException {
+//        try (Connection conn = DriverManager.getConnection(URL, USERNAME, PASSWORD);
+//             Statement stat = conn.createStatement()) {
+//            if (!conn.isClosed()) System.out.println("We are connected!");
+//
+//            conn.setAutoCommit(false); // Включить ожидание commit
+//
+//            // Dirty Read - чтение несуществующей инфы.
+//            conn.setTransactionIsolation(Connection.TRANSACTION_READ_UNCOMMITTED); // Установка уровня изоляции, который не защищает от DirtyRead
+//
+//            stat.execute("update dish set title = 'new value' where id = 23"); // Меняем данные
+//            new OtherTransaction().start(); // Выполняем запрос и вывод данных, который выводит нам измененные данные
+//            Thread.sleep(2000);
+//            conn.rollback(); // Откатываем конекшн тем самым откатывая обновления на 28 строке
+//
+//            // В итоге получается что мы вывели данные в бд, которых в бд на самом деле нет.
+//            // Решение: уровень TRANSACTION_READ_COMMITTED
+//
+//        }
+//    }
+//
+//
+//    static class OtherTransaction extends Thread {
+//        @Override
+//        public void run() {
+//            try (Connection conn = DriverManager.getConnection(URL, USERNAME, PASSWORD);
+//                 Statement stat = conn.createStatement()) {
+//                if (!conn.isClosed()) System.out.println("We are connected2!");
+//
+//                conn.setAutoCommit(false); // Включить ожидание commit
+//                conn.setTransactionIsolation(Connection.TRANSACTION_READ_UNCOMMITTED);
+//
+//                ResultSet resultSet = stat.executeQuery("select * from dish");
+//                while (resultSet.next()) {
+//                    System.out.println(resultSet.getInt("id"));
+//                    System.out.println(resultSet.getString("title"));
+//                }
+//                conn.rollback();
+//            } catch (SQLException e) {
+//                throw new RuntimeException(e);
+//            }
+//        }
+//    }
+//}
 
 
 
